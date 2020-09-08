@@ -1,3 +1,4 @@
+
 #定义变量
 ##缓存账户凭据：
 $credential = Get-Credential xxx@xxxx.com
