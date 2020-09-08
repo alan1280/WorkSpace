@@ -1,0 +1,75 @@
+DKIM
+首先进入到office365管理面板，点击左侧菜单栏的「全部显示」，然后点击「Exchange」，进入Exchange控制台。
+这里会列出已接入域名，点击域名右侧会显示DKIM的状态，点击启用就好。
+如果第一次接入会显示「没有为此域名保存DKIM签名」，根据官方文档，需要通过Powershell方式来开启。
+
+连接到 Exchange Online
+这里的操作以管理员权限打开，需要注意的是，所有命令必须在同一个PowerShell下操作。
+
+下面命令中 <domain> 为自己的域名。
+
+在本地计算机上，打开 Windows PowerShell 并运行以下命令。
+$UserCredential = Get-Credential
+在“Windows PowerShell 凭据请求”对话框中，键入Exchange365全局管理员账户，再单击“确定”。
+
+运行以下命令连接到Exchange Online：
+$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $UserCredential -Authentication Basic -AllowRedirection
+注意：
+
+对于 Office 365 世纪互联运营，请使用 ConnectionUri 值：https://partner.outlook.cn/PowerShell
+对于 Office 365 Germany，请使用 ConnectionUri 值：https://outlook.office.de/powershell-liveid/
+对于 Microsoft 365 GCC High，请使用 ConnectionUri 值：https://outlook.office365.us/powershell-liveid/
+对于 Microsoft 365 DoD，请使用 ConnectionUri 值：https://webmail.apps.mil/powershell-liveid
+运行以下命令设置会话：
+Import-PSSession $Session -DisableNameChecking
+
+下面这个命令先不要执行，只是在操作完成后再执行,作用是断开与远程 PowerShell 会话的连接。如果没有断开会话就关闭了 Windows PowerShell 窗口，可能会用完可用的所有远程 PowerShell 会话，并且将需要等待会话过期。
+
+Remove-PSSession $Session
+如何知道操作成功？
+执行步骤 3 后，Exchange Online cmdlet 将导入到您的本地 Windows PowerShell 会话，并通过进度条进行跟踪。 如果未收到任何错误，说明连接成功。 一个快速测试是运行 Exchange Online cmdlet（例如 Get-Mailbox），然后查看结果。
+
+如果收到错误，则查看以下要求：
+
+常见问题是密码错误。重新运行上述三个步骤，并仔细查看在步骤 1 中输入的用户名和密码。
+为了帮助防止受到拒绝服务 (DoS) 攻击，您最多只能打开三次与 Exchange Online 组织的远程 PowerShell 连接。
+必须为远程 PowerShell 启用用于连接到 Exchange Online 的帐户。有关详细信息，请参阅启用或禁用对 Exchange Online PowerShell 的访问。
+需要在本地计算机和 Microsoft 365 之间打开 TCP 端口 80 通信。 它可能已经打开了，但是要考虑您的组织是否存在严格的 Internet 访问政策。
+如果你的组织使用联合身份验证，并且标识提供者 (IDP) 和/或安全令牌服务 (STS) 未公开提供，则无法使用联合帐户连接到 Exchange Online PowerShell。 而是应该在 Microsoft 365 中创建并使用非联合帐户来连接到 Exchange Online PowerShell。
+在 DNS 中发布自定义域的两条 CNAME 记录
+对于需要 DKIM 签名的域，需要发布两条 CNAME 记录。
+
+运行以下命令以创建选择器目录：
+
+New-DkimSigningConfig -DomainName <domain> -Enabled $false
+# 下面这条命令会给出创建cname的值
+Get-DkimSigningConfig -Identity <domain> | Format-List Selector1CNAME, Selector2CNAME
+
+
+我的cname值是
+
+selector1-curlc-com._domainkey.qyio.onmicrosoft.com
+
+selector2-curlc-com._domainkey.qyio.onmicrosoft.com
+
+所以设置的cname是：
+
+# 头为 selector1._domainkey 与 selector2._domainkey
+
+selector1._domainkey —–> selector1-curlc-com._domainkey.qyio.onmicrosoft.com
+
+ selector2._domainkey —–>selector2-curlc-com._domainkey.qyio.onmicrosoft.com
+
+
+
+自己根据shell返回的值进行添加cname记录。
+
+启用 DKIM 签名
+Set-DkimSigningConfig -Identity <domain> -Enabled $true
+如果报错提示
+
+对于此配置，CNAME 记录不存在。请先发布以下两个 CNAME 记录。
+
+那么等待10-30分钟，等到记录生效即可。
+
+这个时候在后台就能看见DKIM 签名: 已启用状态

@@ -1,0 +1,56 @@
+#连接Exchange Online（Exchange管理员权限）
+
+##缓存登录凭据
+$O365Cred = Get-Credential
+
+##连接Exchange Online
+$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://ps.protection.outlook.com/powershell-liveid/ -Credential $O365Cred -Authentication Basic -AllowRedirection
+
+##导入Exchange 管理模块命令
+import-PSSession $Session
+
+#常用命令
+
+##建立会议室
+
+###建立单个会议室
+New-Mailbox -Name "room01" -DisplayName "room01" -Alias "mr02" -Room
+
+###使用csv批量建立会议室
+#####csv文件格式 Name,DisplayName,Alias
+Import-Csv c:\mrs.txt | foreach {New-Mailbox -Name "$_.name" -DisplayName "$_.DisplayName" -Alias "$_.Alias" -Room }
+
+##查看现有的组织中所有的会议室邮箱。
+Get-Mailbox -ResultSize unlimited -Filter {(RecipientTypeDetails -eq 'RoomMailbox')}
+
+##使用Set-MailBox修改现有会议室邮箱的设置。
+###示例修改会议室容量
+Get-Mailbox "room01" | fl ResourceCapacity
+Set-Mailbox "room01" -ResourceCapacity 12
+
+###示例约束会议室只能在工作时间使用，并且每次占用会议室不得超过四小时。
+Get-CalendarProcessing "room01" | fl ScheduleOnlyDuringWorkHours,MaximumDurationInMinutes
+Set-CalendarProcessing "room01" -ScheduleOnlyDuringWorkHours $true -MaximumDurationInMinutes 240
+
+##配置会议室仅提供给特定员工使用，这些会议室就不允许自由预订，需要通过指定的人进行授权才能预订，需要批量完成这样的会议室邮箱设定可以通过如下操作进行。##完成后，指定用户将自动加入到“预订代理人”和会议室邮箱的“代表发送人”中。
+Get-User -ResultSize unlimited -Filter {(RecipientTypeDetails -eq 'RoomMailbox') -and (DisplayName -like '高层*')} | Set-CalendarProcessing -AllBookInPolicy $false -AllRequestInPolicy $true -ResourceDelegates "张三"
+
+
+##创建和管理会议室列表
+###使用PowerShell创建会议室列表，会议室列表从本质上来讲实际就是一种特殊的通讯组，所以可以通过New-DistributionGroup来创建。
+New-DistributionGroup -Name "北京公司会议室列表" -Alias "bjmrl" -RoomList
+
+###通过Get-DistributionGroup查看现有会议室列表。
+Get-DistributionGroup -ResultSize unlimited -Filter {(RecipientTypeDetails -eq 'RoomList')}
+
+###使用PowerShell管理会议室列表
+####如添加会议室到指定会议室列表通过Add-DistributionGroupMember来实现，并可以Get-DistributionGroupMember使用查看现有会议室列表中的会议室。以上操作和向通讯组中加入查看成员操作相同。
+Add-DistributionGroupMember -Identity "北京公司会议室列表" -Member mr01@××××.net
+Get-DistributionGroupMember "北京公司会议室列表"
+
+####将现有普通通讯组转换为会议室列表（通过EAC创建通讯组，并将已有的会议室邮箱实现加入通讯组，最后再将该通讯组转换为会议室列表）
+
+Set-DistributionGroup -Identity "上海公司会议室列表" -RoomList
+
+#退出管理
+Remove-PSSession $Session

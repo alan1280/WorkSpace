@@ -1,0 +1,29 @@
+#本地导出会议室日历
+##赋予用户导出权限
+New-ManagementRoleAssignment -Name "Import Export_Domain Admins"-User "用户名" -Role "Mailbox Import Export"
+
+##导出单个会议室日历
+New-MailboxexportRequest -Mailbox $邮箱名称 -FilePath"\\Share\Calendar01.pst" -IncludeFolders "#Calendar#"
+
+##使用csv批量导出会议室日历
+#####csv文件格式 Alias
+Import-Csv c:\mrs.txt | foreach {New-MailboxexportRequest -Mailbox "$_.Alias" -FilePath"\\Share\$_.Alias-Calendar.pst" -IncludeFolders "#Calendar#" }
+
+#日历信息导入
+##目前暂不支持Powershell命令，故使用如下方法导入（是用客户端Outlook导入）
+###创建会议室邮箱后配置一个账户对其具备完全控制权限，然后通过Outlook客户端导入功能导入。
+
+##使用Exchange online管理员赋予用户完全控制权限
+
+Add-MailboxPermission "Meeting Room Name" -User "a.user@domain.com" -AccessRights FullAccess
+
+##Outlook操作
+###打开Outlook客户端（使用上述用户配置登录）；
+####检查会议室是否可见（不可见，使用打开附加邮件添加至列表）；
+####打开日历项，查看会议室显示的日历项目为"日历"还是"Calendar"或是其他；
+####本地添加之前导出的日历pst文件，修改日历文件夹名称同上后关闭文件；
+###打开文件→导出导入文件→导入→导入之前的备份文件→确保选中修改后的日历文件夹；
+###等待导入完成。
+###完成后删除用户对会议室的完全控制权限
+Remove-MailboxPermission "Office Meeting Room" -User "a.user@domain.com" -AccessRights FullAccess
+

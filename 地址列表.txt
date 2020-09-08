@@ -1,0 +1,25 @@
+#本地导出地址列表
+##导出文件可能存在软回车符导致换行，需手动整理
+Get-AddressList >> AddressList.csv
+
+##导出文件格式形如：Name DisplayName RecipientFilter
+
+
+#连接Exchange Online Powershell
+##添加组件包
+Install-PackageProvider -Name NuGet -Force
+Install-Module -Name ExchangeOnlineManagement
+##添加凭据
+$UserCredential = Get-Credential
+
+##登录Exchange Online
+Connect-ExchangeOnline -Credential $UserCredential -ShowProgress $true
+
+##添加单个
+New-GlobalAddressList -Name "显示名称" -RecipientFilter "条件选项"
+
+##批量添加
+Import-Csv c:\AddressList.csv | foreach {New-GlobalAddressList -Name "$_.Name" -RecipientFilter "$_.RecipientFilter" }
+
+
+
